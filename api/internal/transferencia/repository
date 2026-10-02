@@ -1,0 +1,120 @@
+package transferencia
+
+import (
+	"context"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+)
+
+type Repository interface {
+	FindAll(ctx context.Context) ([]Transferencia, error)
+
+	FindByID(
+		ctx context.Context,
+		id bson.ObjectID,
+	) (Transferencia, error)
+
+	Create(
+		ctx context.Context,
+		transferencia Transferencia,
+	) error
+
+	Update(
+		ctx context.Context,
+		transferencia Transferencia,
+	) error
+}
+
+type MongoRepository struct {
+	collection *mongo.Collection
+}
+
+func NewMongoRepository(
+	collection *mongo.Collection,
+) *MongoRepository {
+	return &MongoRepository{
+		collection: collection,
+	}
+}
+
+func (r *MongoRepository) FindAll(
+	ctx context.Context,
+) ([]Transferencia, error) {
+
+	cursor, err := r.collection.Find(
+		ctx,
+		bson.M{},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer cursor.Close(ctx)
+
+	var transferencias []Transferencia
+
+	if err := cursor.All(
+		ctx,
+		&transferencias,
+	); err != nil {
+		return nil, err
+	}
+
+	return transferencias, nil
+}
+
+func (r *MongoRepository) FindByID(
+	ctx context.Context,
+	id bson.ObjectID,
+) (Transferencia, error) {
+
+	var transferencia Transferencia
+
+	err := r.collection.FindOne(
+		ctx,
+		bson.M{"_id": id},
+	).Decode(&transferencia)
+
+	return transferencia, err
+}
+
+func (r *MongoRepository) Create(
+	ctx context.Context,
+	transferencia Transferencia,
+) error {
+
+	_, err := r.collection.InsertOne(
+		ctx,
+		transferencia,
+	)
+
+	return err
+}
+
+func (r *MongoRepository) Update(
+	ctx context.Context,
+	transferencia Transferencia,
+) error {
+
+	update := bson.M{
+		"$set": bson.M{
+			"estado":           transferencia.Estado,
+			"aprobada_por":     transferencia.AprobadaPor,
+			"completada_por":   transferencia.CompletadaPor,
+			"motivo_rechazo":   transferencia.MotivoRechazo,
+			"fecha_aprobacion": transferencia.FechaAprobacion,
+			"fecha_rechazo":    transferencia.FechaRechazo,
+			"fecha_completada": transferencia.FechaCompletada,
+		},
+	}
+
+	_, err := r.collection.UpdateOne(
+		ctx,
+		bson.M{"_id": transferencia.ID},
+		update,
+	)
+
+	return err
+}

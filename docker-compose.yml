@@ -1,0 +1,26 @@
+services:
+  mongo:
+    image: mongo:8
+    container_name: gestock-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  api:
+    build: ./api
+    container_name: gestock-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DATABASE: gestock
+      PORT: 8080
+      JWT_SECRET: clave-secreta-gestock-cambiar
+    depends_on:
+      - mongo
+
+volumes:
+  mongo-data:
